@@ -12,6 +12,7 @@ import {
 import { useSession } from "@/context/SessionProvider";
 import { useSavingsSummary } from "@/hooks/useSavingsSummary";
 import SummaryCards from "@/components/savings/SummaryCards";
+import PortfolioAllocationChart from "@/components/savings/PortfolioAllocationChart";
 import DepositModal from "@/components/savings/DepositModal";
 import WithdrawModal from "@/components/savings/WithdrawModal";
 import ErrorRetry from "@/components/ui/ErrorRetry";
@@ -59,6 +60,7 @@ export default function DashboardPage() {
         ) : (
           <>
             <SummaryCards summary={summary} isLoading={isLoading} />
+            <PortfolioAllocationChart summary={summary} isLoading={isLoading} />
 
             <div className="mt-8">
               <h2 className="mb-3 text-sm font-medium text-muted">

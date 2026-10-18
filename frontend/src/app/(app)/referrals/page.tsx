@@ -69,7 +69,7 @@ export default function ReferralsPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-background p-6">
-        <div className="mx-auto max-w-2xl">
+        <div className="mx-auto max-w-4xl">
           <ErrorRetry error={error} onRetry={refetch} />
         </div>
       </div>
@@ -78,7 +78,7 @@ export default function ReferralsPage() {
 
   return (
     <div className="min-h-screen bg-background p-6">
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-4xl">
         <div className="mb-8">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
             <Gift className="h-7 w-7 sm:h-8 sm:w-8 text-brand shrink-0" />
@@ -104,7 +104,13 @@ export default function ReferralsPage() {
         ) : (
           data && (
             <div className="space-y-6">
-              <div className="rounded-2xl border border-border bg-card p-6">
+              <div className="rounded-xl border border-border bg-card p-6">
+                <div className="mb-5">
+                  <p className="text-sm font-medium text-foreground">Your referral code</p>
+                  <p className="mt-2 break-all font-mono text-lg font-semibold text-brand">
+                    {data.referral_code}
+                  </p>
+                </div>
                 <label
                   htmlFor="referral-link"
                   className="block text-sm font-medium text-foreground mb-2"
@@ -117,13 +123,13 @@ export default function ReferralsPage() {
                     type="text"
                     readOnly
                     value={referralLink}
-                    className="w-full min-w-0 select-all rounded-xl border border-border bg-background px-4 py-3 font-mono text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-brand/50 overflow-hidden text-ellipsis"
+                    className="w-full min-w-0 select-all rounded-lg border border-border bg-background px-4 py-3 font-mono text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-brand/50 overflow-hidden text-ellipsis"
                   />
                   <button
                     type="button"
                     onClick={handleCopy}
                     aria-label="Copy referral link"
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background-elevated text-muted transition-colors hover:bg-foreground/5 hover:text-foreground"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-background-elevated text-muted transition-colors hover:bg-foreground/5 hover:text-foreground"
                   >
                     {copyStatus === "copied" ? (
                       <Check className="h-4 w-4 text-brand" />
@@ -139,20 +145,20 @@ export default function ReferralsPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 text-center">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border border-border bg-card p-3 sm:p-4 text-center">
                   <p className="text-xl sm:text-2xl font-semibold text-foreground">
                     {data.total}
                   </p>
-                  <p className="text-xs text-muted mt-1">Total</p>
+                  <p className="text-xs text-muted mt-1">Signups</p>
                 </div>
-                <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 text-center">
+                <div className="rounded-lg border border-border bg-card p-3 sm:p-4 text-center">
                   <p className="text-xl sm:text-2xl font-semibold text-yellow-400">
                     {data.pending}
                   </p>
                   <p className="text-xs text-muted mt-1">Pending</p>
                 </div>
-                <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 text-center">
+                <div className="rounded-lg border border-border bg-card p-3 sm:p-4 text-center">
                   <p className="text-xl sm:text-2xl font-semibold text-brand">
                     {data.qualified}
                   </p>

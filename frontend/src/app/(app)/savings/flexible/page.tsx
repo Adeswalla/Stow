@@ -16,6 +16,7 @@ import { formatUsdc } from "@/lib/currency";
 import type { ActivityFilters } from "@/lib/activity";
 import ActivityTimeline from "@/components/activity/ActivityTimeline";
 import DepositModal from "@/components/savings/DepositModal";
+import RecurringDepositScheduler from "@/components/savings/RecurringDepositScheduler";
 import { EmptyState } from "@/components/ui/EmptyState";
 import ErrorRetry from "@/components/ui/ErrorRetry";
 
@@ -94,6 +95,8 @@ export default function FlexibleSavingsPage() {
             </div>
           </div>
         )}
+
+        {address && <RecurringDepositScheduler key={address} account={address} />}
 
         <div className="mt-8">
           <div className="mb-3 flex items-center justify-between">
