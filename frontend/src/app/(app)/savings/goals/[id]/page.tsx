@@ -6,6 +6,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { useGoalClaim } from "@/hooks/useGoalClaim";
 import ErrorRetry from "@/components/ui/ErrorRetry";
 import { formatStroopsAmount } from "@/lib/currency";
+import GoalMilestoneCelebration from "@/components/savings/GoalMilestoneCelebration";
 
 interface Goal {
   on_chain_id: string;
@@ -138,6 +139,13 @@ export default function GoalDetailPage({
 
   return (
     <div className="min-h-screen bg-background p-6">
+      <GoalMilestoneCelebration
+        goalId={goal.on_chain_id}
+        goalName={goal.name}
+        currentAmount={goal.current_amount}
+        targetAmount={goal.target_amount}
+        percentage={percentage}
+      />
       <div className="mx-auto max-w-2xl">
         <div className="mb-8">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">

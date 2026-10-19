@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Lock,
   LogOut,
+  Scale,
   Settings,
   Target,
   Users,
@@ -16,6 +17,7 @@ import Logo from "@/components/Logo";
 
 export const sidebarItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Compare savings", href: "/savings/compare", match: "/savings/compare", icon: Scale },
   { label: "Goals", href: "/savings/goals/new", match: "/savings/goals", icon: Target },
   { label: "Locked savings", href: "/savings/locked/new", match: "/savings/locked", icon: Lock },
   { label: "Groups", href: "/savings/groups/new", match: "/savings/groups", icon: Users },

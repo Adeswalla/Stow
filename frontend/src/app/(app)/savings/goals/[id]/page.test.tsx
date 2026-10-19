@@ -28,6 +28,7 @@ const activeGoal = {
 describe("GoalDetailPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    window.localStorage.clear();
   });
 
   it("renders the goal name, status, and progress", async () => {
@@ -44,6 +45,40 @@ describe("GoalDetailPage", () => {
     });
     expect(screen.getByText("In progress")).toBeInTheDocument();
     expect(screen.getByText("2.5 / 10 XLM")).toBeInTheDocument();
+  });
+
+  it("celebrates a newly reached progress milestone once", async () => {
+    mockApiFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ ...activeGoal, current_amount: "25000000" }),
+    } as Response);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+    expect(screen.getByText("25% reached!")).toBeInTheDocument();
+    expect(window.localStorage.getItem("stow-goal-milestone:goal-1:25")).toBe(
+      "celebrated",
+    );
+  });
+
+  it("does not celebrate a milestone that was already shown", async () => {
+    window.localStorage.setItem("stow-goal-milestone:goal-1:25", "celebrated");
+    mockApiFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ ...activeGoal, current_amount: "25000000" }),
+    } as Response);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Vacation Fund")).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("disables the claim action until the goal is reached", async () => {

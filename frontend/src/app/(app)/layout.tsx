@@ -7,8 +7,20 @@ import { useSession } from "@/context/SessionProvider";
 import Sidebar from "@/components/app/Sidebar";
 import AddressBadge from "@/components/app/AddressBadge";
 import OnboardingTour from "@/components/app/OnboardingTour";
+import AppAccessLock from "@/components/app/AppAccessLock";
+import {
+  BIOMETRIC_ACCESS_CHANGED_EVENT,
+  readBiometricAccessSettings,
+  type BiometricAccessSettings,
+} from "@/lib/biometricAccess";
 
 const TOUR_STORAGE_KEY = "stow-onboarding-complete";
+
+interface DeviceAccessState {
+  userId: string;
+  settings: BiometricAccessSettings | null;
+  unlocked: boolean;
+}
 
 /**
  * Authenticated app shell for every route under (app): a sidebar + topbar
@@ -25,6 +37,50 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
+  const [deviceAccess, setDeviceAccess] = useState<DeviceAccessState | null>(null);
+
+  const currentUserId = user?.id;
+
+  useEffect(() => {
+    if (!currentUserId) {
+      setDeviceAccess(null);
+      return;
+    }
+
+    const settings = readBiometricAccessSettings(currentUserId);
+    setDeviceAccess({
+      userId: currentUserId,
+      settings,
+      unlocked: settings === null,
+    });
+
+    const syncSettings = () => {
+      const nextSettings = readBiometricAccessSettings(currentUserId);
+      setDeviceAccess((current) => ({
+        userId: currentUserId,
+        settings: nextSettings,
+        unlocked:
+          current?.userId === currentUserId
+            ? current.unlocked
+            : nextSettings === null,
+      }));
+    };
+    const lockWhenHidden = () => {
+      if (document.visibilityState !== "hidden") return;
+      setDeviceAccess((current) =>
+        current?.userId === currentUserId && current.settings
+          ? { ...current, unlocked: false }
+          : current,
+      );
+    };
+
+    window.addEventListener(BIOMETRIC_ACCESS_CHANGED_EVENT, syncSettings);
+    document.addEventListener("visibilitychange", lockWhenHidden);
+    return () => {
+      window.removeEventListener(BIOMETRIC_ACCESS_CHANGED_EVENT, syncSettings);
+      document.removeEventListener("visibilitychange", lockWhenHidden);
+    };
+  }, [currentUserId]);
 
   useEffect(() => {
     if (!window.localStorage.getItem(TOUR_STORAGE_KEY)) setTourOpen(true);
@@ -52,6 +108,29 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen items-center justify-center bg-background">
         <span className="text-sm text-muted">Loading…</span>
       </div>
+    );
+  }
+
+  if (!deviceAccess || deviceAccess.userId !== user.id) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <span className="text-sm text-muted">Preparing app access...</span>
+      </div>
+    );
+  }
+
+  if (deviceAccess.settings && !deviceAccess.unlocked) {
+    return (
+      <AppAccessLock
+        userId={user.id}
+        settings={deviceAccess.settings}
+        onUnlock={() =>
+          setDeviceAccess((current) =>
+            current?.userId === user.id ? { ...current, unlocked: true } : current,
+          )
+        }
+        onSignOut={signOut}
+      />
     );
   }
 

@@ -144,6 +144,18 @@ describe("FlexibleSavingsPage", () => {
     expect(screen.getByText("+5.00 USDC")).toBeInTheDocument();
   });
 
+  it("renders round-up settings for the connected savings account", async () => {
+    mockApi();
+
+    render(<FlexibleSavingsPage />);
+
+    expect(await screen.findByTestId("round-up-settings")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Enable round-ups" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+  });
+
   it("shows an empty state when there is no recent activity", async () => {
     mockApi();
 

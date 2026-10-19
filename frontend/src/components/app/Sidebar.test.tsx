@@ -22,6 +22,10 @@ describe("Sidebar", () => {
       "href",
       "/dashboard",
     );
+    expect(screen.getByRole("link", { name: /compare savings/i })).toHaveAttribute(
+      "href",
+      "/savings/compare",
+    );
     expect(screen.getByRole("link", { name: /locked savings/i })).toHaveAttribute(
       "href",
       "/savings/locked/new",

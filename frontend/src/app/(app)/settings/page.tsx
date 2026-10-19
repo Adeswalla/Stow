@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import ErrorRetry from "@/components/ui/ErrorRetry";
 import AppearanceSettings from "@/components/settings/AppearanceSettings";
+import BiometricAccessSettings from "@/components/settings/BiometricAccessSettings";
+import { useSession } from "@/context/SessionProvider";
 import { Settings, Bell, BellOff, Clock, Loader2 } from "lucide-react";
 
 interface NotificationCategory {
@@ -47,6 +49,7 @@ const notificationCategories: NotificationCategory[] = [
 
 export default function SettingsPage() {
   const { t } = useTranslation();
+  const { user } = useSession();
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     savingsReminders: true,
     goalProgress: true,
@@ -183,6 +186,12 @@ export default function SettingsPage() {
         <div className="mb-6">
           <AppearanceSettings />
         </div>
+
+        {user && (
+          <div className="mb-6">
+            <BiometricAccessSettings userId={user.id} />
+          </div>
+        )}
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
