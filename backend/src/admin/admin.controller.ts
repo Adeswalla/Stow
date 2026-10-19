@@ -61,13 +61,18 @@ export class AdminController {
   @Roles(Role.Admin, Role.Moderator)
   @UseInterceptors(AdminAuditInterceptor)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Aggregate savings metrics (deposits, accounts, status breakdown)' })
+  @ApiOperation({
+    summary: 'Aggregate savings metrics (deposits, accounts, status breakdown)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Savings overview metrics',
     type: SavingsOverviewDto,
   })
-  @ApiResponse({ status: 403, description: 'Forbidden — admin or moderator role required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden — admin or moderator role required',
+  })
   async getSavingsOverview(): Promise<SavingsOverviewDto> {
     return this.adminService.getSavingsOverview();
   }
@@ -76,13 +81,19 @@ export class AdminController {
   @Roles(Role.Admin, Role.Moderator)
   @UseInterceptors(AdminAuditInterceptor)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Aggregate yield-adapter metrics (strategy, assets, fees, harvest history)' })
+  @ApiOperation({
+    summary:
+      'Aggregate yield-adapter metrics (strategy, assets, fees, harvest history)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Yield adapter overview metrics',
     type: YieldAdminOverviewResponseDto,
   })
-  @ApiResponse({ status: 403, description: 'Forbidden — admin or moderator role required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden — admin or moderator role required',
+  })
   async getYieldOverview(): Promise<YieldAdminOverviewResponseDto> {
     return this.adminService.getYieldOverview();
   }
@@ -145,5 +156,95 @@ export class AdminController {
       dto,
       (req as { user: { id: string } }).user.id,
     );
+  }
+
+  @Get('dashboard/stats')
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(300)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get comprehensive dashboard statistics' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Dashboard statistics including users, transactions, and system health',
+  })
+  async getDashboardStats() {
+    return this.adminService.getDashboardStats();
+  }
+
+  @Get('dashboard/activity')
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(60)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get recent system activity and events' })
+  @ApiResponse({
+    status: 200,
+    description: 'Recent activity timeline',
+  })
+  async getRecentActivity(@Query() query: any) {
+    return this.adminService.getRecentActivity(query);
+  }
+
+  @Get('dashboard/analytics')
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(600)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get platform analytics and trends' })
+  @ApiResponse({
+    status: 200,
+    description: 'Analytics data including growth metrics and trends',
+  })
+  async getAnalytics(@Query() query: any) {
+    return this.adminService.getAnalytics(query);
+  }
+
+  @Get('notifications/overview')
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(120)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get notification system overview and metrics' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Notification metrics including delivery rates and channel performance',
+  })
+  async getNotificationOverview() {
+    return this.adminService.getNotificationOverview();
+  }
+
+  @Get('system/health')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get detailed system health metrics' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'System health including database, cache, and external services',
+  })
+  async getSystemHealth() {
+    return this.adminService.getSystemHealth();
+  }
+
+  @Get('audit-logs')
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(60)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get admin audit logs with filtering' })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated audit logs',
+  })
+  async getAuditLogs(@Query() query: any) {
+    return this.adminService.getAuditLogs(query);
+  }
+
+  @Get('reports/export')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Export admin reports in various formats' })
+  @ApiResponse({
+    status: 200,
+    description: 'Generated report file',
+  })
+  async exportReport(@Query() query: any) {
+    return this.adminService.exportReport(query);
   }
 }
