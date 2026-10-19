@@ -150,8 +150,16 @@ export class AuthService implements OnModuleInit {
   async verifyChallenge(
     stellar_address: string,
     signed_challenge: string,
-  ): Promise<{ access_token: string; refresh_token: string; user: User }> {
-    const user = await this.verifySignature(stellar_address, signed_challenge);
+  ): Promise<{
+    access_token: string;
+    refresh_token: string;
+    user: User;
+    is_new_user: boolean;
+  }> {
+    const { user, is_new_user } = await this.verifySignatureWithStatus(
+      stellar_address,
+      signed_challenge,
+    );
 
     // Sign JWT with sub: user.id
     const payload = { sub: user.id, stellar_address: user.stellar_address };
@@ -164,7 +172,7 @@ export class AuthService implements OnModuleInit {
       familyId,
     );
 
-    return { access_token, refresh_token, user };
+    return { access_token, refresh_token, user, is_new_user };
   }
 
   /** sha256 hex digest — fast, deterministic lookup key for a raw refresh token. */
@@ -279,6 +287,15 @@ export class AuthService implements OnModuleInit {
     stellar_address: string,
     signed_challenge: string,
   ): Promise<User> {
+    return (
+      await this.verifySignatureWithStatus(stellar_address, signed_challenge)
+    ).user;
+  }
+
+  private async verifySignatureWithStatus(
+    stellar_address: string,
+    signed_challenge: string,
+  ): Promise<{ user: User; is_new_user: boolean }> {
     this.logger.debug(`Verifying challenge for ${stellar_address}`);
 
     // Find a valid, unused challenge for this address
@@ -335,7 +352,7 @@ export class AuthService implements OnModuleInit {
       }
     }
 
-    return user;
+    return { user, is_new_user: isNewUser };
   }
 
   /** Finds the most recent valid (non-expired) challenge for a given address. */

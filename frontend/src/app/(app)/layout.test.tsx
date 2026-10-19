@@ -97,4 +97,24 @@ describe("AppLayout", () => {
     expect(screen.getByRole("main")).toHaveTextContent("Protected content");
     expect(screen.getByText("saver@example.com")).toBeInTheDocument();
   });
+
+  it("hides authenticated content until device access is unlocked", async () => {
+    window.localStorage.setItem(
+      "stow-session",
+      JSON.stringify({
+        accessToken: "stored-token",
+        user: { id: "user-1" },
+        address: "GADDRESS123",
+      }),
+    );
+    window.localStorage.setItem(
+      "stow-biometric-access:user-1",
+      JSON.stringify({ credentialId: "credential-1", pinSalt: "salt", pinHash: "hash" }),
+    );
+
+    renderLayout(<div>Protected content</div>);
+
+    expect(await screen.findByRole("dialog")).toHaveAccessibleName("Unlock Stow");
+    expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
+  });
 });

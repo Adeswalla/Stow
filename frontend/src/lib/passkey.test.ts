@@ -79,6 +79,43 @@ describe("loginWithPasskey", () => {
     expect(result).toEqual(session);
   });
 
+  it("requires user verification when requested for device unlock", async () => {
+    const options = { challenge: "chal-1", userVerification: "preferred" as const };
+    mockApiPost.mockResolvedValueOnce(options).mockResolvedValueOnce({
+      access_token: "token-1",
+      refresh_token: "refresh-1",
+      user: { id: "user-1", stellar_address: "GADDR1" },
+    });
+    mockStartAuthentication.mockResolvedValueOnce({ id: "cred-1" });
+
+    await loginWithPasskey({ requireUserVerification: true });
+
+    expect(mockStartAuthentication).toHaveBeenCalledWith({
+      optionsJSON: { ...options, userVerification: "required" },
+    });
+  });
+
+  it("limits device unlock to the enrolled credential when provided", async () => {
+    const options = { challenge: "chal-1" };
+    mockApiPost.mockResolvedValueOnce(options).mockResolvedValueOnce({
+      access_token: "token-1",
+      refresh_token: "refresh-1",
+      user: { id: "user-1", stellar_address: "GADDR1" },
+    });
+    mockStartAuthentication.mockResolvedValueOnce({ id: "cred-1" });
+
+    await loginWithPasskey({ credentialId: "device-credential" });
+
+    expect(mockStartAuthentication).toHaveBeenCalledWith({
+      optionsJSON: {
+        ...options,
+        allowCredentials: [
+          { id: "device-credential", type: "public-key" },
+        ],
+      },
+    });
+  });
+
   it("marks a cancelled/dismissed prompt as cancelled", async () => {
     mockApiPost.mockResolvedValueOnce({ challenge: "chal-1" });
     const cause = new DOMException("The user cancelled", "NotAllowedError");
@@ -167,6 +204,32 @@ describe("registerPasskey", () => {
       "/api/v1/auth/passkey/register/begin",
       { display_name: "My Phone" },
     );
+  });
+
+  it("requires a platform authenticator and user verification when requested", async () => {
+    const options = {
+      challenge: "chal-1",
+      authenticatorSelection: {
+        residentKey: "preferred" as const,
+        userVerification: "preferred" as const,
+      },
+    };
+    mockApiPost.mockResolvedValueOnce(options).mockResolvedValueOnce({});
+    mockStartRegistration.mockResolvedValueOnce({ id: "cred-1" });
+
+    await registerPasskey("App access", { requirePlatformAuthenticator: true });
+
+    expect(mockStartRegistration).toHaveBeenCalledWith({
+      optionsJSON: {
+        ...options,
+        authenticatorSelection: {
+          ...options.authenticatorSelection,
+          authenticatorAttachment: "platform",
+          residentKey: "required",
+          userVerification: "required",
+        },
+      },
+    });
   });
 
   it("does not pass skipAuth, so the session token is attached like any authenticated call", async () => {
