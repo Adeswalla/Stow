@@ -22,7 +22,10 @@ import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { ListVerifiedAddressesQueryDto } from './dto/list-verified-addresses-query.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { SavingsOverviewDto } from './dto/savings-overview.dto';
-import { YieldAdminOverviewResponseDto, HarvestHistoryEntryDto } from '../savings/dto/yield-admin-overview-response.dto';
+import {
+  YieldAdminOverviewResponseDto,
+  HarvestHistoryEntryDto,
+} from '../savings/dto/yield-admin-overview-response.dto';
 import { ContractEvent } from '../indexer/entities/contract-event.entity';
 import { ConfigService } from '@nestjs/config';
 import { SorobanService } from '../soroban/soroban.service';
@@ -390,12 +393,14 @@ export class AdminService {
     ]);
 
     // Transform harvest events into the response format
-    const harvestHistory: HarvestHistoryEntryDto[] = recentHarvests.map((h) => ({
-      timestamp: h.ledger ?? 0,
-      delta: h.data?.delta?.toString() ?? '0',
-      fee: h.data?.fee?.toString() ?? '0',
-      total_assets: h.data?.total_assets?.toString() ?? '0',
-    }));
+    const harvestHistory: HarvestHistoryEntryDto[] = recentHarvests.map(
+      (h) => ({
+        timestamp: h.ledger ?? 0,
+        delta: h.data?.delta?.toString() ?? '0',
+        fee: h.data?.fee?.toString() ?? '0',
+        total_assets: h.data?.total_assets?.toString() ?? '0',
+      }),
+    );
 
     // Get active strategy name from contract events (stored as strategy_registered events)
     let activeStrategyName: string | null = null;
@@ -421,7 +426,9 @@ export class AdminService {
   /**
    * Fetches recent 'harvested' events from the contract_events table.
    */
-  private async getRecentHarvestEvents(limit: number): Promise<ContractEvent[]> {
+  private async getRecentHarvestEvents(
+    limit: number,
+  ): Promise<ContractEvent[]> {
     return this.contractEventRepository.find({
       where: { event_type: 'harvested' },
       order: { ledger: 'DESC' },
@@ -442,5 +449,352 @@ export class AdminService {
       return String(event.data.name);
     }
     return null;
+  }
+
+  /**
+   * Get comprehensive dashboard statistics
+   */
+  async getDashboardStats() {
+    const now = new Date();
+    const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // User statistics
+    const [
+      totalUsers,
+      activeUsers24h,
+      activeUsers7d,
+      newUsers24h,
+      newUsers7d,
+      bannedUsers,
+    ] = await Promise.all([
+      this.usersRepository.count(),
+      this.usersRepository.count({
+        where: {
+          last_login_at: Repository.prototype.moreThanOrEqual(
+            last24Hours,
+          ) as any,
+        },
+      }),
+      this.usersRepository.count({
+        where: {
+          last_login_at: Repository.prototype.moreThanOrEqual(last7Days) as any,
+        },
+      }),
+      this.usersRepository.count({
+        where: {
+          created_at: Repository.prototype.moreThanOrEqual(last24Hours) as any,
+        },
+      }),
+      this.usersRepository.count({
+        where: {
+          created_at: Repository.prototype.moreThanOrEqual(last7Days) as any,
+        },
+      }),
+      this.usersRepository.count({ where: { is_banned: true } }),
+    ]);
+
+    // Savings statistics
+    const savingsStats = await this.getSavingsOverview();
+
+    // Transaction statistics (from contract events)
+    const [totalTransactions, transactions24h, transactions7d] =
+      await Promise.all([
+        this.contractEventRepository.count(),
+        this.contractEventRepository.count({
+          where: {
+            created_at: Repository.prototype.moreThanOrEqual(
+              last24Hours,
+            ) as any,
+          },
+        }),
+        this.contractEventRepository.count({
+          where: {
+            created_at: Repository.prototype.moreThanOrEqual(last7Days) as any,
+          },
+        }),
+      ]);
+
+    // Verified addresses count
+    const totalVerifiedAddresses =
+      await this.verifiedAddressesRepository.count();
+
+    return {
+      users: {
+        total: totalUsers,
+        active_24h: activeUsers24h,
+        active_7d: activeUsers7d,
+        new_24h: newUsers24h,
+        new_7d: newUsers7d,
+        banned: bannedUsers,
+      },
+      savings: {
+        total_deposits: savingsStats.total_deposits,
+        total_accounts: savingsStats.total_savings_accounts,
+        deposits_by_status: savingsStats.deposits_by_status,
+      },
+      transactions: {
+        total: totalTransactions,
+        last_24h: transactions24h,
+        last_7d: transactions7d,
+      },
+      system: {
+        verified_addresses: totalVerifiedAddresses,
+      },
+      computed_at: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Get recent system activity
+   */
+  async getRecentActivity(query: any) {
+    const { page = 1, limit = 50, type } = query;
+    const skip = (page - 1) * limit;
+
+    // Get recent contract events
+    const qb = this.contractEventRepository.createQueryBuilder('event');
+
+    if (type) {
+      qb.where('event.event_type = :type', { type });
+    }
+
+    qb.orderBy('event.created_at', 'DESC').skip(skip).take(limit);
+
+    const [events, total] = await qb.getManyAndCount();
+
+    return {
+      data: events.map((event) => ({
+        id: event.id,
+        type: event.event_type,
+        transaction_hash: event.transaction_hash,
+        ledger: event.ledger,
+        data: event.data,
+        timestamp: event.created_at,
+      })),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Get platform analytics and trends
+   */
+  async getAnalytics(query: any) {
+    const { period = '7d' } = query;
+
+    let startDate: Date;
+    const now = new Date();
+
+    switch (period) {
+      case '24h':
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    // User growth trend
+    const userGrowth = await this.usersRepository
+      .createQueryBuilder('user')
+      .select('DATE(user.created_at)', 'date')
+      .addSelect('COUNT(*)', 'count')
+      .where('user.created_at >= :startDate', { startDate })
+      .groupBy('DATE(user.created_at)')
+      .orderBy('DATE(user.created_at)', 'ASC')
+      .getRawMany();
+
+    // Transaction volume trend
+    const transactionTrend = await this.contractEventRepository
+      .createQueryBuilder('event')
+      .select('DATE(event.created_at)', 'date')
+      .addSelect('COUNT(*)', 'count')
+      .where('event.created_at >= :startDate', { startDate })
+      .groupBy('DATE(event.created_at)')
+      .orderBy('DATE(event.created_at)', 'ASC')
+      .getRawMany();
+
+    // Deposit volume trend
+    const depositTrend = await this.anchorDepositRepository
+      .createQueryBuilder('deposit')
+      .select('DATE(deposit.created_at)', 'date')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect('SUM(deposit.amount)', 'total_amount')
+      .where('deposit.created_at >= :startDate', { startDate })
+      .groupBy('DATE(deposit.created_at)')
+      .orderBy('DATE(deposit.created_at)', 'ASC')
+      .getRawMany();
+
+    return {
+      period,
+      start_date: startDate.toISOString(),
+      end_date: now.toISOString(),
+      user_growth: userGrowth.map((row) => ({
+        date: row.date,
+        count: parseInt(row.count, 10),
+      })),
+      transaction_trend: transactionTrend.map((row) => ({
+        date: row.date,
+        count: parseInt(row.count, 10),
+      })),
+      deposit_trend: depositTrend.map((row) => ({
+        date: row.date,
+        count: parseInt(row.count, 10),
+        total_amount: row.total_amount || '0',
+      })),
+      computed_at: now.toISOString(),
+    };
+  }
+
+  /**
+   * Get notification system overview
+   */
+  async getNotificationOverview() {
+    // This would need to be implemented with proper notification tracking
+    // For now, returning a placeholder structure
+    return {
+      total_sent_24h: 0,
+      total_delivered_24h: 0,
+      total_failed_24h: 0,
+      delivery_rate: 0,
+      channels: {
+        email: { sent: 0, delivered: 0, failed: 0 },
+        sms: { sent: 0, delivered: 0, failed: 0 },
+        in_app: { sent: 0, delivered: 0, failed: 0 },
+        push: { sent: 0, delivered: 0, failed: 0 },
+      },
+      computed_at: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Get system health metrics
+   */
+  async getSystemHealth() {
+    const now = new Date();
+
+    // Database health check
+    let databaseHealthy = true;
+    let databaseLatency = 0;
+    try {
+      const start = Date.now();
+      await this.usersRepository.query('SELECT 1');
+      databaseLatency = Date.now() - start;
+    } catch (error) {
+      databaseHealthy = false;
+    }
+
+    // Soroban RPC health check
+    let sorobanHealthy = true;
+    let sorobanLatency = 0;
+    try {
+      const start = Date.now();
+      await this.sorobanService.getYieldAdapterTotalAssets();
+      sorobanLatency = Date.now() - start;
+    } catch (error) {
+      sorobanHealthy = false;
+    }
+
+    return {
+      status: databaseHealthy && sorobanHealthy ? 'healthy' : 'degraded',
+      timestamp: now.toISOString(),
+      services: {
+        database: {
+          status: databaseHealthy ? 'up' : 'down',
+          latency_ms: databaseLatency,
+        },
+        soroban_rpc: {
+          status: sorobanHealthy ? 'up' : 'down',
+          latency_ms: sorobanLatency,
+        },
+      },
+    };
+  }
+
+  /**
+   * Get admin audit logs with filtering
+   */
+  async getAuditLogs(query: any) {
+    const {
+      page = 1,
+      limit = 50,
+      action,
+      admin_id,
+      start_date,
+      end_date,
+    } = query;
+    const skip = (page - 1) * limit;
+
+    // This assumes AdminAuditLog entity exists
+    // Implementation would depend on actual audit log structure
+    return {
+      data: [],
+      meta: {
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
+      },
+    };
+  }
+
+  /**
+   * Export admin reports in various formats
+   */
+  async exportReport(query: any) {
+    const { type = 'users', format = 'json' } = query;
+
+    // Basic implementation - would be enhanced based on requirements
+    let data: any;
+
+    switch (type) {
+      case 'users':
+        data = await this.usersRepository.find({
+          select: [
+            'id',
+            'username',
+            'stellar_address',
+            'role',
+            'created_at',
+            'is_banned',
+          ],
+          take: 10000, // Limit for safety
+        });
+        break;
+      case 'deposits':
+        data = await this.anchorDepositRepository.find({
+          take: 10000,
+        });
+        break;
+      case 'transactions':
+        data = await this.contractEventRepository.find({
+          take: 10000,
+        });
+        break;
+      default:
+        data = [];
+    }
+
+    return {
+      type,
+      format,
+      record_count: data.length,
+      data,
+      generated_at: new Date().toISOString(),
+    };
   }
 }
