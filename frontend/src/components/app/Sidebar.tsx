@@ -73,6 +73,14 @@ export default function Sidebar({
                 <Link
                   href={item.href}
                   onClick={onNavigate}
+                  data-tour={
+                    item.href === "/dashboard" ? "dashboard" :
+                    item.href === "/savings/goals/new" ? "goals" :
+                    item.href === "/savings/locked/new" ? "locked" :
+                    item.href === "/savings/groups/new" ? "groups" :
+                    item.href === "/ramps/deposit" ? "deposit" :
+                    item.href === "/referrals" ? "referrals" : undefined
+                  }
                   aria-current={active ? "page" : undefined}
                   className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand/50 ${
                     active

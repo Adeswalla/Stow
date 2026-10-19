@@ -14,6 +14,7 @@ export class WalletConnectError extends Error {
 export interface WalletVerifyResult {
   access_token: string;
   refresh_token: string;
+  is_new_user: boolean;
   user: { id: string; stellar_address: string; [key: string]: unknown };
 }
 

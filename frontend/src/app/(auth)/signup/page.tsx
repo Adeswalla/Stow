@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Fingerprint, Loader2, Wallet } from "lucide-react";
 import { browserSupportsWebAuthn } from "@simplewebauthn/browser";
 import Logo from "@/components/Logo";
 import { useSession } from "@/context/SessionProvider";
 import { connectAndVerifyWallet, WalletConnectError } from "@/lib/wallet";
 import { registerPasskey } from "@/lib/passkey";
+import { apiFetch } from "@/lib/api";
 
 const DASHBOARD_PATH = "/dashboard";
 
@@ -30,19 +31,32 @@ const DASHBOARD_PATH = "/dashboard";
  */
 export default function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setSession } = useSession();
   const [status, setStatus] = useState<"idle" | "pending" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
   const passkeysSupported = browserSupportsWebAuthn();
+  const referralCode = searchParams.get("ref");
 
   const handleSignup = async () => {
     setStatus("pending");
     setError(null);
 
     try {
-      const { access_token, user } = await connectAndVerifyWallet();
+      const { access_token, is_new_user, user } = await connectAndVerifyWallet();
       setSession(access_token, { id: user.id }, user.stellar_address);
+
+      if (is_new_user && referralCode && referralCode !== user.id) {
+        try {
+          await apiFetch("/api/users/me/referrals/claim", {
+            method: "POST",
+            body: JSON.stringify({ referrer_id: referralCode }),
+          });
+        } catch {
+          // Referral attribution must not prevent account setup from completing.
+        }
+      }
 
       if (passkeysSupported) {
         try {

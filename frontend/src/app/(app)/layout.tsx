@@ -2,10 +2,13 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { CircleHelp, Menu, X } from "lucide-react";
 import { useSession } from "@/context/SessionProvider";
 import Sidebar from "@/components/app/Sidebar";
 import AddressBadge from "@/components/app/AddressBadge";
+import OnboardingTour from "@/components/app/OnboardingTour";
+
+const TOUR_STORAGE_KEY = "stow-onboarding-complete";
 
 /**
  * Authenticated app shell for every route under (app): a sidebar + topbar
@@ -21,6 +24,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+
+  useEffect(() => {
+    if (!window.localStorage.getItem(TOUR_STORAGE_KEY)) setTourOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (tourOpen && window.innerWidth < 768) {
+      setMobileNavOpen(true);
+    }
+  }, [tourOpen]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -88,11 +102,22 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               </span>
             )}
             {address && <AddressBadge address={address} />}
+            <button
+              type="button"
+              onClick={() => setTourOpen(true)}
+              title="Restart tutorial"
+              aria-label="Restart tutorial"
+              className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-card hover:text-foreground focus:outline-none focus:ring-2 focus:ring-brand/50"
+            >
+              <CircleHelp className="h-4 w-4" aria-hidden="true" />
+              <span>Tour</span>
+            </button>
           </div>
         </header>
 
         <main className="flex-1">{children}</main>
       </div>
+      {tourOpen && <OnboardingTour onClose={() => setTourOpen(false)} />}
     </div>
   );
 }
